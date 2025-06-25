@@ -1,0 +1,102 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "fields": {
+          "field": [
+            {
+              "key": "email",
+              "type": "string",
+              "label": "Enter the lead's email"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Prompt for Email",
+      "type": "n8n-nodes-base.prompt",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const email = $json.email;\nconst domain = email.split('@')[1];\nreturn [{ json: { email, domain } }];"
+      },
+      "name": "Extract Domain",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://company.clearbit.com/v2/companies/find?domain={{$json[\"domain\"]}}",
+        "authentication": "basicAuth",
+        "responseFormat": "json"
+      },
+      "name": "Clearbit Lookup",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [600, 300],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "YOUR_CLEARBIT_CREDENTIAL_ID"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "spreadsheetId": "YOUR_SPREADSHEET_ID",
+        "range": "Sheet1!A:F",
+        "options": {
+          "valueInputMode": "USER_ENTERED"
+        },
+        "values": "={{[$json[\"email\"], $json[\"domain\"], $json[\"name\"], $json[\"category\"], $json[\"metrics\"]?.[\"employeesRange\"], $json[\"location\"] || $json[\"geo\"]?.[\"country\"]]}}"
+      },
+      "name": "Append to Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 3,
+      "position": [800, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Prompt for Email": {
+      "main": [
+        [
+          {
+            "node": "Extract Domain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Domain": {
+      "main": [
+        [
+          {
+            "node": "Clearbit Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clearbit Lookup": {
+      "main": [
+        [
+          {
+            "node": "Append to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
